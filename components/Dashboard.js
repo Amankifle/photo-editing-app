@@ -1,24 +1,19 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { createStackNavigator } from "@react-navigation/stack";
 import { AuthContext } from './AuthContext';
 import auth from '@react-native-firebase/auth';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Alert } from 'react-native';
+import firestore from '@react-native-firebase/firestore';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Alert, Image } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary, launchCamera } from "react-native-image-picker";
-
-const tools = [
-  { id: 1, name: 'Photo editor', icon: 'image' },
-  { id: 2, name: 'AutoCut', icon: 'cut' },
-  { id: 3, name: 'Product photos', icon: 'camera' },
-  { id: 4, name: 'AI poster', icon: 'star' },
-  { id: 5, name: 'Expand', icon: 'chevron-down' },
-];
 
 const Stack = createStackNavigator();
 
 export default function Dashboard({ navigation }) {
   const { isLoggedIn } = useContext(AuthContext);
   const { logout } = useContext(AuthContext);
+  const [imageUri, setImageUri] = useState(null);
 
   const pickImage = () => {
     const options = {
@@ -66,21 +61,40 @@ export default function Dashboard({ navigation }) {
     }
   };
 
-  const signOut = async () => {
-/*      await auth().signOut();
-    logout();  */
-    navigation.navigate('ProfileScreen');
-  };
+  // Fetch user data when the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserData = async () => {
+        try {
+          const currentUser = auth().currentUser;
+          if (currentUser) {
+            const userDoc = await firestore().collection('users').doc(currentUser.uid).get();
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              setImageUri(userData.profileImage || null);
+            } else {
+              console.log('User document not found');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      };
+
+      fetchUserData();
+    }, [])
+  );
 
   useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.header}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ProfileScreen')}>
             {isLoggedIn ? (
-              <Text style={{ color: 'black' }} onPress={() => signOut()}>
-                Logout
-              </Text>
+              <Image 
+                source={imageUri ? { uri: imageUri } : require('../Resource/Images/profile-user.jpg')} 
+                style={styles.avatar} 
+              />
             ) : (
               <Ionicons
                 name="person-outline"
@@ -90,30 +104,14 @@ export default function Dashboard({ navigation }) {
               />
             )}
           </TouchableOpacity>
-          <View>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Ionicons name="notifications-outline" size={24} color="black" />
-            </TouchableOpacity>
-          </View>
         </View>
       ),
     });
-  }, [isLoggedIn, navigation]);
+  }, [isLoggedIn, navigation, imageUri]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-
-<View style={styles.toolsContainer}>
-        {tools.map((tool) => (
-          <TouchableOpacity key={tool.id} style={styles.toolItem}>
-            <View style={styles.toolIcon}>
-              <Ionicons name={tool.icon} size={24} color="black" />
-            </View>
-            <Text style={styles.toolText}>{tool.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
 
       <TouchableOpacity style={styles.newProjectButton} onPress={pickImage}>
         <Ionicons name="add" size={24} color="black" />
@@ -150,31 +148,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 16,
-  },
-  headerIcon: {
-    marginLeft: 20,
-  },
-  toolsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 25,
-  },
-  toolItem: {
-    alignItems: 'center',
-    width: 70,
-  },
-  toolIcon: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#F5F7FA',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  toolText: {
-    fontSize: 12,
-    textAlign: 'center',
+    marginRight: 10
   },
   newProjectButton: {
     flexDirection: 'row',
@@ -220,5 +194,10 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     fontSize: 16,
     color: '#666',
+  },
+  avatar: {
+    width: 45,
+    height: 45,
+    borderRadius: 50,
   },
 });

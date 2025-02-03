@@ -25,7 +25,7 @@ export default function App() {
             <Stack.Screen name="Filter" component={Filter} options={{ headerShown: false }}/>
             <Stack.Screen name="Effect" component={Effect} options={{ headerShown: false }}/>
             <Stack.Screen name="Paint" component={Paint} options={{ headerShown: false }}/>
-            <Stack.Screen name="ProfileScreen" component={ProfileScreen} /* options={{ headerShown: false }} *//>
+            <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{title: 'Profile', headerTitleAlign: 'center' }} />
           </Stack.Navigator>
         </NavigationContainer>
       </AuthProvider>    
