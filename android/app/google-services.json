@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "689795346533",
+    "project_id": "photo-editor-32bc3",
+    "storage_bucket": "photo-editor-32bc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689795346533:android:321ff02f03219ca92ed68c",
+        "android_client_info": {
+          "package_name": "com.photoeditor"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "689795346533-ukkcosjtq5v9rv1qj3dvq1iorf7gd1uo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.photoeditor",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "689795346533-7nf37pqvli2cpmc65425b4dshq3pcrp1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAv1MHuH6Xckm7Tu47RW1B1eCoy1qNb-3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "689795346533-7nf37pqvli2cpmc65425b4dshq3pcrp1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
