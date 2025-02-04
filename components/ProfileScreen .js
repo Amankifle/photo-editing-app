@@ -1,11 +1,23 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import firestore from '@react-native-firebase/firestore';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { AuthContext } from './AuthContext'; 
+import { AuthContext } from './AuthContext';
 import auth from '@react-native-firebase/auth';
 import EditProfileModal from './EditProfileModal';
+
+// Separate component for info items
+const InfoItem = ({ iconName, text }) => (
+  <View style={styles.infoItem}>
+    <Icon name={iconName} size={20} color="#000" />
+    <Text style={styles.infoText}>{text || 'N/A'}</Text>
+  </View>
+);
+
+// Constants
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || "2b7569691217e68cdf957b6f66d634e1";
+const DEFAULT_PROFILE_IMAGE = require('../Resource/Images/profile-user.jpg');
 
 const ProfileScreen = ({ navigation }) => {
   const { email, logout } = useContext(AuthContext);
@@ -15,104 +27,81 @@ const ProfileScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [imageUri, setImageUri] = useState(null);
 
-  const API_KEY = "2b7569691217e68cdf957b6f66d634e1";
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const currentUser = auth().currentUser;
-        
-        if (currentUser) {
-          const userDoc = await firestore().collection('users').doc(currentUser.uid).get();
-
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            setUserData(userData);
-            setImageUri(userData.profileImage || null);
-
-            const createdAt = userData.createdAt ? userData.createdAt.toDate() : null;
-            const formattedDate = createdAt
-              ? createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-              : 'Unknown Date';
-            setDate(formattedDate);
-          } else {
-            console.log('User document not found');
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setLoading(false);
+  // Fetch user data
+  const fetchUserData = useCallback(async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        console.log('No authenticated user found');
+        return;
       }
-    };
 
-    fetchUserData();
+      const userDoc = await firestore().collection('users').doc(currentUser.uid).get();
+      if (!userDoc.exists) {
+        console.log('User document not found');
+        return;
+      }
+
+      const data = userDoc.data();
+      setUserData(data);
+      setImageUri(data.profileImage || null);
+
+      const createdAt = data.createdAt?.toDate();
+      setDate(createdAt?.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }) || 'Unknown Date');
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      Alert.alert('Error', 'Failed to load user data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Upload Image and Update Immediately
-  const uploadToImgBB = async () => {
-    const result = await launchImageLibrary({ mediaType: 'photo', includeBase64: true });
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
-    if (result.didCancel || !result.assets || !result.assets[0].base64) {
-      console.log("Image selection canceled or no base64 data found");
-      return;
-    }
-
-    const imageBase64 = result.assets[0].base64;
-
+  // Image handling functions
+  const uploadToImgBB = useCallback(async () => {
     try {
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+      const result = await launchImageLibrary({ mediaType: 'photo', includeBase64: true });
+      if (result.didCancel || !result.assets?.[0]?.base64) return;
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({ image: imageBase64 }).toString(),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ image: result.assets[0].base64 }).toString(),
       });
 
       const data = await response.json();
+      if (!data.success) throw new Error('Upload failed');
 
-      if (data.success) {
-        const imageUrl = data.data.url;
-
-        setImageUri(imageUrl);
-        await storeImageURLInFirestore(imageUrl);
-      } else {
-        console.error("Upload failed:", data);
-      }
+      const imageUrl = data.data.url;
+      setImageUri(imageUrl);
+      await storeImageURLInFirestore(imageUrl);
     } catch (error) {
       console.error("Error uploading image:", error);
+      Alert.alert('Error', 'Failed to upload image. Please try again.');
     }
-  };
+  }, []);
 
-  // Store Uploaded Image URL in Firestore
   const storeImageURLInFirestore = async (imageUrl) => {
     const userId = auth().currentUser?.uid;
-  
-    if (!userId || !imageUrl) {
-      console.log('User is not authenticated or image URL is missing');
-      return;
-    }
+    if (!userId || !imageUrl) return;
 
     try {
-      await firestore().collection('users').doc(userId).update({
-        profileImage: imageUrl,
-      });
-
-      console.log('Profile image URL stored in Firestore');
+      await firestore().collection('users').doc(userId).update({ profileImage: imageUrl });
     } catch (error) {
-      console.error('Error storing profile image in Firestore:', error);
+      console.error('Error storing profile image:', error);
+      Alert.alert('Error', 'Failed to save profile image. Please try again.');
     }
   };
 
-  // Delete Profile Image
-  const deleteProfileImage = async () => {
-    const userId = auth().currentUser?.uid;
-
-    if (!userId) {
-      console.log('User not authenticated');
-      return;
-    }
-
+  // Action handlers
+  const handleDeleteProfileImage = useCallback(() => {
     Alert.alert(
       "Delete Profile Picture",
       "Are you sure you want to remove your profile picture?",
@@ -122,28 +111,22 @@ const ProfileScreen = ({ navigation }) => {
           text: "Delete",
           onPress: async () => {
             try {
+              const userId = auth().currentUser?.uid;
+              if (!userId) return;
+
               setImageUri(null);
-              await firestore().collection('users').doc(userId).update({
-                profileImage: null,
-              });
-              console.log("Profile image deleted from Firestore");
+              await firestore().collection('users').doc(userId).update({ profileImage: null });
             } catch (error) {
               console.error("Error deleting profile image:", error);
+              Alert.alert('Error', 'Failed to delete profile image. Please try again.');
             }
           },
         },
       ]
     );
-  };
+  }, []);
 
-  const deleteAccount = async () => {
-    const user = auth().currentUser;
-  
-    if (!user) {
-      console.log("No user is currently logged in.");
-      return;
-    }
-  
+  const handleDeleteAccount = useCallback(() => {
     Alert.alert(
       "Delete Account",
       "Are you sure you want to permanently delete your account? This action cannot be undone.",
@@ -153,51 +136,87 @@ const ProfileScreen = ({ navigation }) => {
           text: "Delete",
           onPress: async () => {
             try {
-              // 1. Delete user data from Firestore
+              const user = auth().currentUser;
+              if (!user) return;
+
               await firestore().collection('users').doc(user.uid).delete();
-              console.log("User data deleted from Firestore.");
-  
-              // 2. Delete user from Firebase Authentication
               await user.delete();
-              console.log("User deleted from Firebase Authentication.");
-  
-              // 3. Log out and navigate back
               logout();
-              navigation.replace("Login"); // Redirect user to Login screen
+              navigation.replace("Login");
             } catch (error) {
               console.error("Error deleting account:", error);
-              Alert.alert("Error", "Failed to delete account. Please try again.");
+              Alert.alert('Error', 'Failed to delete account. Please try again.');
             }
           },
         },
       ]
     );
-  };
+  }, [logout, navigation]);
+
+  const handleClearPhotoHistory = useCallback(() => {
+    Alert.alert(
+      "Clear Photo History", 
+      "Are you sure you want to permanently delete all projects? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              const userId = auth().currentUser?.uid;
+              if (!userId) return;
+  
+              const snapshot = await firestore()
+                .collection('photoHistory')
+                .where('userId', '==', userId)
+                .get();
+  
+              const batch = firestore().batch();
+              snapshot.forEach((doc) => batch.delete(doc.ref));
+              await batch.commit();
+  
+              await fetchUserData();
+              Alert.alert('Success', 'Photo history has been cleared successfully.');
+            } catch (error) {
+              console.error("Error clearing photo history:", error);
+              Alert.alert('Error', 'Failed to clear photo history. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [fetchUserData]);
   
 
-  const signOut = async () => {
-    await auth().signOut();
-    logout();
-    navigation.goBack();
-  };
+  const handleSignOut = useCallback(async () => {
+    try {
+      await auth().signOut();
+      logout();
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
+  }, [logout, navigation]);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#000" style={{ flex: 1, justifyContent: 'center' }} />;
+    return <ActivityIndicator size="large" color="#000" style={styles.loading} />;
   }
 
   return (
     <View style={styles.container}>
       <EditProfileModal 
-        visible={modalVisible} 
-        onClose={() => setModalVisible(false)} 
-        userData={userData} 
-        onUpdate={(updatedData) => setUserData({ ...userData, ...updatedData })}
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        userData={userData}
+        onUpdate={(updatedData) => setUserData(prev => ({ ...prev, ...updatedData }))}
       />
+
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
           <Image 
-            source={imageUri ? { uri: imageUri } : require('../Resource/Images/profile-user.jpg')} 
-            style={styles.avatar} 
+            source={imageUri ? { uri: imageUri } : DEFAULT_PROFILE_IMAGE}
+            style={styles.avatar}
           />
           <TouchableOpacity style={styles.cameraIcon} onPress={uploadToImgBB}>
             <Icon name="camera" size={20} color="#fff" />
@@ -214,32 +233,30 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.editText}>Edit</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.infoItem}>
-          <Icon name="mail" size={20} color="#000" />
-          <Text style={styles.infoText}>{userData?.email || 'N/A'}</Text>
-        </View>
-        <View style={styles.infoItem}>
-          <Icon name="call" size={20} color="#000" />
-          <Text style={styles.infoText}>{userData?.phone || 'N/A'}</Text>
-        </View>
+        <InfoItem iconName="mail" text={userData?.email} />
+        <InfoItem iconName="call" text={userData?.phone} />
       </View>
 
       {imageUri && (
-      <View style={styles.section}>
-          <TouchableOpacity style={styles.infoItem} onPress={deleteProfileImage}>
-            <Icon name="trash" color="#000" size={20}/>
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.infoItem} onPress={handleDeleteProfileImage}>
+            <Icon name="trash" color="#000" size={20} />
             <Text style={styles.infoText}>Remove Profile Picture</Text>
           </TouchableOpacity>
-      </View>
+        </View>
       )}
 
       <View style={styles.section}>
-        <TouchableOpacity style={styles.utilityItem} onPress={signOut}>
+        <TouchableOpacity style={styles.utilityItem} onPress={handleClearPhotoHistory}>
+          <Icon name="trash-outline" size={20} color="#000" />
+          <Text style={styles.infoText}>Clear project history</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.utilityItem} onPress={handleSignOut}>
           <Icon name="log-out" size={20} color="#000" />
           <Text style={styles.infoText}>Log Out</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.utilityItem} onPress={deleteAccount}>
-          <Icon name="trash" size={20}/>
+        <TouchableOpacity style={styles.utilityItem} onPress={handleDeleteAccount}>
+          <Icon name="trash" size={20} color="#000" />
           <Text style={styles.infoText}>Delete Account</Text>
         </TouchableOpacity>
       </View>

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from "react-native";
-import { Canvas, Image, useImage, ColorMatrix, useCanvasRef, ImageFilter } from "@shopify/react-native-skia";
+import { Canvas, Image, useImage, ColorMatrix, useCanvasRef } from "@shopify/react-native-skia";
+import { Blur } from "@shopify/react-native-skia";
 import RNFS from "react-native-fs";
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Filter({ route, navigation }) {
@@ -45,6 +47,7 @@ export default function Filter({ route, navigation }) {
       0, 0, 0, 1, 0,
     ].map(Number);
   };
+
   const saveAndReturn = async () => {
     try {
       if (!canvasRef.current) {
@@ -61,7 +64,6 @@ export default function Filter({ route, navigation }) {
       const filename = `${Date.now()}.jpg`;
       const filePath = `${RNFS.DocumentDirectoryPath}/${filename}`;
   
-
       await RNFS.writeFile(filePath, base64Image, 'base64');
   
       const fileStats = await RNFS.stat(filePath);
@@ -77,7 +79,7 @@ export default function Filter({ route, navigation }) {
         size: fileStats.size
       };
   
-      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path,imageHistory: imageHistory,currentIndex: currentIndex});
+      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path, imageHistory: imageHistory, currentIndex: currentIndex});
   
     } catch (error) {
       Alert.alert("Error", `Failed to save image: ${error.message}`);
@@ -88,6 +90,7 @@ export default function Filter({ route, navigation }) {
   const handleFilterPress = (filter) => {
     setSelectedFilter(filter);
   };
+
   const handleFilterAdjust = (delta) => {
     switch(selectedFilter) {
       case 'Brightness':
@@ -105,7 +108,6 @@ export default function Filter({ route, navigation }) {
     }
   };
 
-
   if (!image) {
     return (
       <View style={styles.loadingContainer}>
@@ -117,10 +119,7 @@ export default function Filter({ route, navigation }) {
   return (
     <View style={styles.container}>
         <View style={styles.TopButtons}>
-
-          <TouchableOpacity 
-            onPress={saveAndReturn}
-          >
+          <TouchableOpacity onPress={saveAndReturn}>
             <Ionicons style={styles.actionButtonText} name={'checkmark'} size={27} color="white" />
           </TouchableOpacity>
         </View>
@@ -132,8 +131,8 @@ export default function Filter({ route, navigation }) {
           width={SCREEN_WIDTH}
           height={SCREEN_HEIGHT * 0.7}
           fit="contain"
-          filter={blur > 0 ? ImageFilter.MakeBlur(blur, blur) : null}
         >
+          {blur > 0 && <Blur blur={blur} />}
           <ColorMatrix matrix={brightnessMatrix(brightness)} />
           <ColorMatrix matrix={contrastMatrix(contrast)} />
           <ColorMatrix matrix={saturationMatrix(saturation)} />
@@ -180,7 +179,6 @@ export default function Filter({ route, navigation }) {
             </TouchableOpacity>
           ))}
         </View>
-
       </View>
     </View>
   );

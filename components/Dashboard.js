@@ -7,6 +7,7 @@ import firestore from '@react-native-firebase/firestore';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Alert, Image } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { launchImageLibrary, launchCamera } from "react-native-image-picker";
+import ProjectList from './ProjectList';
 
 const Stack = createStackNavigator();
 
@@ -61,7 +62,6 @@ export default function Dashboard({ navigation }) {
     }
   };
 
-  // Fetch user data when the screen is focused
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -124,15 +124,11 @@ export default function Dashboard({ navigation }) {
           <Ionicons name="menu" size={24} color="black" />
         </TouchableOpacity>
       </View>
-
-      <View style={styles.emptyState}>
-        <View style={styles.emptyStateIcon}>
-          <Ionicons name="play" size={24} color="gray" />
-          <Ionicons name="cut" size={24} color="gray" />
-        </View>
-        <Text style={styles.emptyStateText}>Your projects will appear here.</Text>
-        <Text style={styles.emptyStateSubtext}>Start creating now.</Text>
-      </View>
+      {isLoggedIn?
+      <ProjectList navigation={navigation}/>:
+            <View style={styles.emptyState}>
+        <Text style={styles.emptyStateSubtext}>Login to see history!</Text>
+      </View>}
     </SafeAreaView>
   );
 }

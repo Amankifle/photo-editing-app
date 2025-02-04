@@ -1,11 +1,14 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert, BackHandler, ActivityIndicator  } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ImagePicker from 'react-native-image-crop-picker';
 import RNFS from 'react-native-fs';
 import { AuthContext } from './AuthContext';
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const API_KEY = "2b7569691217e68cdf957b6f66d634e1";
 
 export default function EditPhoto({ route, navigation }) {
   const { imageUri: initialImageUri } = route.params;
@@ -13,6 +16,7 @@ export default function EditPhoto({ route, navigation }) {
   const [imageHistory, setImageHistory] = useState([initialImageUri]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { isLoggedIn } = useContext(AuthContext);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -58,6 +62,7 @@ export default function EditPhoto({ route, navigation }) {
       BackHandler.removeEventListener("hardwareBackPress", handleBackPress);
     };
   }, []);
+
   const handleRedo = () => {
     setCurrentIndex((prevIndex) => {
       const newIndex = Math.min(imageHistory.length - 1, prevIndex + 1);
@@ -90,7 +95,7 @@ export default function EditPhoto({ route, navigation }) {
 
       Alert.alert(
         'Success',
-        'Image saved successfully!',
+        'Image Downloaded successfully!',
         [{ text: 'OK' }]
       );
       navigation.goBack();
@@ -100,11 +105,57 @@ export default function EditPhoto({ route, navigation }) {
     }
   };
 
-  const handleSave = () =>{
-    if(!isLoggedIn){
-      Alert.alert('Please login to save image', 'Failed to save image');
+   const uploadToImgBB = async () => {
+    setIsUploading(true);
+    try {
+      const imageBase64 = await RNFS.readFile(currentImage, 'base64');
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ image: imageBase64 }).toString(),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const imageUrl = data.data.url;
+        addPhotoToHistory(imageUrl);
+        Alert.alert("Upload Successful", "Image has been uploaded successfully.");
+      } else {
+        Alert.alert("Upload Failed", "Could not upload the image.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to upload image.");
+    }finally {
+      setIsUploading(false);
+      navigation.goBack();
     }
-  }
+  };
+
+  const addPhotoToHistory = async (imageUrl) => {
+    if (!auth().currentUser) return;
+    try {
+      const timestamp = new Date();
+      firestore().collection("photoHistory").add({
+        userId: auth().currentUser.uid,
+        imageUrl,
+        timestamp: timestamp
+      });
+    } catch (error) {
+      console.error("Error saving to Firestore:", error);
+    }
+  }; 
+
+  const handleSave = async () => {
+     if (!isLoggedIn) {
+      Alert.alert("Please login", "You must be logged in to save images.");
+      return;
+    }
+    await uploadToImgBB();
+    setSaved(true); 
+  };
 
   return (
     <View style={styles.container}>
@@ -126,20 +177,31 @@ export default function EditPhoto({ route, navigation }) {
           </TouchableOpacity>
         </View>
         <View style={{flexDirection: 'row'}}>
-        <TouchableOpacity style={styles.SaveButton} onPress={handleSave}>
+        <TouchableOpacity style={[styles.SaveButton, currentIndex === 0 && styles.disabledButton]} onPress={handleSave} disabled={currentIndex === 0} >
     <View style={styles.SaveButtonContent}>
       
-      <Ionicons name="bookmark" size={18} color="white" style={styles.SaveButtonIcon} />
+    {isUploading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Ionicons 
+                  name="bookmark" 
+                  size={18} 
+                  color={currentIndex === 0 ? "#666" : "white"} 
+                  style={styles.SaveButtonIcon} 
+                />
+              )}
     </View>
   </TouchableOpacity>
-  <TouchableOpacity style={styles.DownloadButton} onPress={handleDownload}>
+  <TouchableOpacity style={styles.DownloadButton} onPress={handleDownload} disabled={currentIndex === 0}>
     <View style={styles.SaveButtonContent}>
       
-      <Ionicons name="cloud-download" size={18} color="white" style={styles.SaveButtonIcon} />
+      <Ionicons name="cloud-download" size={18} color="white" style={[styles.SaveButtonIcon, currentIndex === 0 && styles.disabledButton]} />
     </View>
   </TouchableOpacity>
         </View>
       </View>
+
+
 
       <Image
         source={{ uri: currentImage }}
@@ -154,9 +216,9 @@ export default function EditPhoto({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.toolItem} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.toolItem} onPress={() => navigation.replace('ImageFlip', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex})}>
           <View style={styles.toolIcon}>
-            <Ionicons name="ellipse" size={24} color="#333" />
+            <Ionicons name="swap-horizontal" size={24} color="#fff" />
           </View>
         </TouchableOpacity>
 
