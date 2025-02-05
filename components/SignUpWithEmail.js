@@ -20,7 +20,6 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
     const { login } = useContext(AuthContext);
     const { SetEmail } = useContext(AuthContext);
 
-    // Check if form is valid
     const isFormValid = useMemo(() => {
         if (signup) {
             return name.trim() !== '' && 
@@ -59,8 +58,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
                 setErrorMessage('Network error. Please check your connection');
                 break;
             default:
-                setErrorPassword(true);
-                setErrorMessage('Incorrect password');
+                setErrorMessage('Something went wrong. Please try again.');
         }
     };
 
@@ -96,49 +94,48 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
 
     const signUpWithEmail = async () => {
         if (!validateInputs()) return;
-        
+    
         setLoading(true);
         try {
             const userCredential = await auth().createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
-
-            await user.sendEmailVerification();
-            
-            await user.updateProfile({
+    
+            // Ensure auth().currentUser is updated
+            auth().currentUser?.updateProfile({
                 displayName: name,
             });
-
-            const timestamp = new Date();
-            await firestore().collection('users').doc(user.uid).set({
-                name: name,
-                email: email,
-                createdAt: timestamp,
-                phone: '',
-            });
-
+    
+            // Send email verification
+            auth().currentUser?.sendEmailVerification();
+    
+            // Save user info in Firestore
+            firestore()
+                .collection('users')
+                .doc(user.uid)
+                .set({
+                    name: name,
+                    email: email,
+                    createdAt: firestore.Timestamp.now(), // Corrected
+                    phone: '',
+                    uid: user.uid,
+                });
+    
             setLoading(false);
             Alert.alert(
                 'Success',
                 'A verification email has been sent. Please verify before logging in.',
                 [{ text: 'OK', onPress: () => {
                     setSignup(false);
-                    // Reset form
-                    setEmail('');
-                    setPassword('');
-                    setConfirmPassword('');
-                    setName('');
-                    setErrorMessage('');
-                    setErrorEmail(false);
-                    setErrorPassword(false);
-                    setErrorConfirmPassword(false);
-                    setErrorName(false);
+                    resetForm();
                 }}]
             );
-
+    
         } catch (error) {
+            setLoading(false);
             handleError(error);
         }
     };
+    
 
     const loginWithEmail = async () => {
         if (!validateInputs()) return;
@@ -166,9 +163,20 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
         }
     };
 
+    const resetForm = () => {
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setName('');
+        setErrorMessage('');
+        setErrorEmail(false);
+        setErrorPassword(false);
+        setErrorConfirmPassword(false);
+        setErrorName(false);
+    };
+
     return (
         <View style={styles.container}>
-            {/* Header */}
             {signup ? <Text style={styles.headerText}>Sign up</Text> : <Text style={styles.headerText}>Sign in</Text>}
             <TouchableOpacity style={styles.helpButton}>
                 <Text style={styles.helpText}>Help</Text>
@@ -184,7 +192,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
 
             {signup && (
                 <TextInput
-                    style={[styles.input, errorName ? { borderColor: 'red' } : null]}
+                    style={[styles.input, errorName && { borderColor: 'red' }]}
                     placeholder="Enter your name"
                     value={name}
                     onChangeText={(text) => {
@@ -197,7 +205,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
             )}
 
             <TextInput
-                style={[styles.input, errorEmail ? { borderColor: 'red' } : null]}
+                style={[styles.input, errorEmail && { borderColor: 'red' }]}
                 placeholder="Enter email address"
                 value={email}
                 onChangeText={(text) => {
@@ -211,7 +219,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
             />
 
             <TextInput
-                style={[styles.input, errorPassword ? { borderColor: 'red' } : null]}
+                style={[styles.input, errorPassword && { borderColor: 'red' }]}
                 placeholder="Enter password"
                 placeholderTextColor="#cccccc"
                 value={password}
@@ -225,7 +233,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
 
             {signup && (
                 <TextInput
-                    style={[styles.input, errorConfirmPassword ? { borderColor: 'red' } : null]}
+                    style={[styles.input, errorConfirmPassword && { borderColor: 'red' }]}
                     value={confirmPassword}
                     onChangeText={(text) => {
                         setConfirmPassword(text);
@@ -263,14 +271,7 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
                         <Text 
                             onPress={() => {
                                 setSignup(true);
-                                setErrorMessage('');
-                                setErrorEmail(false);
-                                setErrorPassword(false);
-                                // Reset form when switching to signup
-                                setEmail('');
-                                setPassword('');
-                                setConfirmPassword('');
-                                setName('');
+                                resetForm();
                             }} 
                             style={styles.signUpLink}
                         >

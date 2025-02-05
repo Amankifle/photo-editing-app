@@ -77,7 +77,7 @@ export default function Dashboard({ navigation }) {
             }
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          //console.error('Error fetching user data:', error);
         }
       };
 

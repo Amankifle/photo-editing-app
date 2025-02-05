@@ -1,4 +1,4 @@
-import { Modal, View, Text, Button, StyleSheet, TouchableOpacity, Image, SafeAreaView  } from 'react-native';
+import { Modal, View, Text, Button, StyleSheet, TouchableOpacity, Image, SafeAreaView, Alert  } from 'react-native';
 import React, { useState, useEffect, useContext } from 'react';
 import Front_image from './../Resource/Images/Screenshot.png'
 import SignUpWithEmail from './SignUpWithEmail';
@@ -39,21 +39,21 @@ export default function Home({navigation}) {
         const userCredential = await auth().signInWithCredential(googleCredential);
         const user = userCredential.user;
 
-        try{
-                    // Save user info to Firestore
-        const userDoc = await firestore().collection('users').doc(user.uid).get();
-        
-        if (!userDoc.exists) {
-            const timestamp = new Date();
-            await firestore().collection('users').doc(user.uid).set({
-                name: user.displayName || userInfo.data.user.name,
-                email: user.email || userInfo.data.user.email,
-                createdAt: timestamp,
-                phone: user.phoneNumber || '',
-            });
-        }
-        }catch{
-            console.log('unable to store user data')
+        try {
+            const userDoc = await firestore().collection('users').doc(user.uid).get();
+            
+            if (!userDoc.exists) {
+                const timestamp = new Date();
+                await firestore().collection('users').doc(user.uid).set({
+                    name: user.displayName || userInfo.data.user.name,
+                    email: user.email || userInfo.data.user.email,
+                    createdAt: timestamp,
+                    phone: user.phoneNumber || '',
+                });
+            }
+        } catch (error) {
+            console.error('Error storing user data:', error);
+            Alert.alert('Registration Error', 'Could not complete user registration');
         }finally{
         login();
         SetEmail(user.email);
@@ -62,7 +62,7 @@ export default function Home({navigation}) {
         
 
     } catch (error) {
-        console.error('Google Sign-In error:', error);
+        Alert.alert('Google Sign-In canceled.');
     } finally {
         setLoading(false);
     }

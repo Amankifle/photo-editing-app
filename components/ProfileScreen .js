@@ -26,42 +26,49 @@ const ProfileScreen = ({ navigation }) => {
   const [date, setDate] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [imageUri, setImageUri] = useState(null);
+  const [userId, setUserId] = useState(auth().currentUser?.uid || null);
 
   // Fetch user data
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = useCallback(async (uid) => {
+    if (!uid) return;
+
+    setLoading(true); 
     try {
-      const currentUser = auth().currentUser;
-      if (!currentUser) {
-        console.log('No authenticated user found');
-        return;
+      const userDoc = await firestore().collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        const data = userDoc.data();
+        setUserData(data);
+        setImageUri(data.profileImage || null);
+        
+        const createdAt = data.createdAt?.toDate();
+        setDate(createdAt?.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }) || 'Unknown Date');
+      } else {
+        setUserData(null);
       }
-
-      const userDoc = await firestore().collection('users').doc(currentUser.uid).get();
-      if (!userDoc.exists) {
-        console.log('User document not found');
-        return;
-      }
-
-      const data = userDoc.data();
-      setUserData(data);
-      setImageUri(data.profileImage || null);
-
-      const createdAt = data.createdAt?.toDate();
-      setDate(createdAt?.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }) || 'Unknown Date');
     } catch (error) {
-      console.error('Error fetching user data:', error);
       Alert.alert('Error', 'Failed to load user data. Please try again.');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Listen for authentication state changes
   useEffect(() => {
-    fetchUserData();
+    const unsubscribe = auth().onAuthStateChanged((user) => {
+      if (user) {
+        setUserId(user.uid);
+        fetchUserData(user.uid);
+      } else {
+        setUserData(null);
+        setImageUri(null);
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup on unmount
   }, [fetchUserData]);
 
   // Image handling functions
@@ -95,7 +102,7 @@ const ProfileScreen = ({ navigation }) => {
     try {
       await firestore().collection('users').doc(userId).update({ profileImage: imageUrl });
     } catch (error) {
-      console.error('Error storing profile image:', error);
+      //console.error('Error storing profile image:', error);
       Alert.alert('Error', 'Failed to save profile image. Please try again.');
     }
   };
@@ -117,7 +124,7 @@ const ProfileScreen = ({ navigation }) => {
               setImageUri(null);
               await firestore().collection('users').doc(userId).update({ profileImage: null });
             } catch (error) {
-              console.error("Error deleting profile image:", error);
+              //console.error("Error deleting profile image:", error);
               Alert.alert('Error', 'Failed to delete profile image. Please try again.');
             }
           },
@@ -127,6 +134,24 @@ const ProfileScreen = ({ navigation }) => {
   }, []);
 
   const handleDeleteAccount = useCallback(() => {
+    
+    try {
+      const userId = auth().currentUser?.uid;
+      if (!userId) return;
+
+      const snapshot = firestore()
+        .collection('photoHistory')
+        .where('userId', '==', userId)
+        .get();
+
+      const batch = firestore().batch();
+      snapshot.forEach((doc) => batch.delete(doc.ref));
+      batch.commit();
+
+    } catch (error) {
+      Alert.alert('Error', 'Failed to clear photo history. Please try again.');
+      return;
+    }
     Alert.alert(
       "Delete Account",
       "Are you sure you want to permanently delete your account? This action cannot be undone.",
@@ -144,7 +169,7 @@ const ProfileScreen = ({ navigation }) => {
               logout();
               navigation.replace("Login");
             } catch (error) {
-              console.error("Error deleting account:", error);
+              //console.error("Error deleting account:", error);
               Alert.alert('Error', 'Failed to delete account. Please try again.');
             }
           },
@@ -178,7 +203,7 @@ const ProfileScreen = ({ navigation }) => {
               await fetchUserData();
               Alert.alert('Success', 'Photo history has been cleared successfully.');
             } catch (error) {
-              console.error("Error clearing photo history:", error);
+              //console.error("Error clearing photo history:", error);
               Alert.alert('Error', 'Failed to clear photo history. Please try again.');
             }
           },
@@ -194,7 +219,7 @@ const ProfileScreen = ({ navigation }) => {
       logout();
       navigation.goBack();
     } catch (error) {
-      console.error("Error signing out:", error);
+      //console.error("Error signing out:", error);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   }, [logout, navigation]);
