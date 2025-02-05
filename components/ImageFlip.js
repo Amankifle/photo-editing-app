@@ -6,7 +6,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function ImageFlip ({ route, navigation }) {
+export default function ImageFlip({ route, navigation }) {
   const { imageUri } = route.params;
   const { imageHistory } = route.params;
   const { currentIndex } = route.params;
@@ -15,7 +15,7 @@ export default function ImageFlip ({ route, navigation }) {
   const [flipHorizontal, setFlipHorizontal] = useState(false);
   const [flipVertical, setFlipVertical] = useState(false);
   const canvasRef = useCanvasRef();
- 
+
   const saveAndReturn = async () => {
     try {
       if (!canvasRef.current) {
@@ -47,7 +47,11 @@ export default function ImageFlip ({ route, navigation }) {
         size: fileStats.size
       };
   
-      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path, imageHistory: imageHistory, currentIndex: currentIndex});
+      navigation.replace('EditPhoto', { 
+        newImageUri: imageMetadata.path, 
+        imageHistory: imageHistory, 
+        currentIndex: currentIndex
+      });
   
     } catch (error) {
       Alert.alert("Error", `Failed to save image: ${error.message}`);
@@ -55,13 +59,32 @@ export default function ImageFlip ({ route, navigation }) {
     }
   };
 
-    if (!image) {
-      return (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading image...</Text>
-        </View>
-      );
-    }
+  if (!image) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading image...</Text>
+      </View>
+    );
+  }
+
+  // Calculate dimensions to maintain aspect ratio
+  const imageAspectRatio = image.width() / image.height();
+  const containerAspectRatio = SCREEN_WIDTH / (SCREEN_HEIGHT * 0.7);
+  
+  let imageWidth = SCREEN_WIDTH;
+  let imageHeight = SCREEN_HEIGHT * 0.7;
+  
+  if (imageAspectRatio > containerAspectRatio) {
+    // Image is wider than container
+    imageHeight = SCREEN_WIDTH / imageAspectRatio;
+  } else {
+    // Image is taller than container
+    imageWidth = (SCREEN_HEIGHT * 0.7) * imageAspectRatio;
+  }
+
+  // Calculate center position
+  const centerX = (SCREEN_WIDTH - imageWidth) / 2;
+  const centerY = ((SCREEN_HEIGHT * 0.7) - imageHeight) / 2;
 
   return (
     <View style={styles.container}>
@@ -74,33 +97,39 @@ export default function ImageFlip ({ route, navigation }) {
       <Canvas ref={canvasRef} style={styles.canvas}>
         <Image
           image={image}
-          x={0}
-          y={0}
-          width={SCREEN_WIDTH}
-          height={SCREEN_HEIGHT * 0.7}
-          fit="contain"
+          x={centerX}
+          y={centerY}
+          width={imageWidth}
+          height={imageHeight}
           transform={[
-            { translateX: -SCREEN_WIDTH/2 },
-            { translateY: -SCREEN_HEIGHT * 0.35 },
+            { translateX: centerX + imageWidth / 2 },
+            { translateY: centerY + imageHeight / 2 },
+            { scale: 1 },
             { scaleX: flipHorizontal ? -1 : 1 },
             { scaleY: flipVertical ? -1 : 1 },
-            { translateX: SCREEN_WIDTH/2 },
-            { translateY: SCREEN_HEIGHT * 0.35 },
+            { translateX: -(centerX + imageWidth / 2) },
+            { translateY: -(centerY + imageHeight / 2) },
           ]}
         />
       </Canvas>
       
       <View style={styles.controlContainer}>
-        <TouchableOpacity onPress={() => setFlipHorizontal(!flipHorizontal)} style={styles.button}>
+        <TouchableOpacity 
+          onPress={() => setFlipHorizontal(!flipHorizontal)} 
+          style={styles.button}
+        >
           <Ionicons name="swap-horizontal" size={24} color="white" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFlipVertical(!flipVertical)} style={styles.button}>
+        <TouchableOpacity 
+          onPress={() => setFlipVertical(!flipVertical)} 
+          style={styles.button}
+        >
           <Ionicons name="swap-vertical" size={24} color="white" />
         </TouchableOpacity>
       </View>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -112,6 +141,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     padding: 10,
+    marginTop: 20,
   },
   canvas: {
     width: SCREEN_WIDTH,

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert, BackHandler, ActivityIndicator  } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert, BackHandler, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ImagePicker from 'react-native-image-crop-picker';
 import RNFS from 'react-native-fs';
@@ -17,32 +17,29 @@ export default function EditPhoto({ route, navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { isLoggedIn } = useContext(AuthContext);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       if (route.params?.newImageUri) {
         const newUri = route.params.newImageUri;
-        setCurrentImage(newUri);
-        const ImageHistory = route.params.imageHistory;
-        setImageHistory(ImageHistory);
-        const CurrentIndex = route.params.currentIndex;
-        setCurrentIndex(CurrentIndex);
+        const prevHistory = route.params.imageHistory || imageHistory;
+        const prevIndex = route.params.currentIndex || currentIndex;
+
+        // Update the history by removing any "future" states after the current index
+        const newHistory = [...prevHistory.slice(0, prevIndex + 1), newUri];
         
-        setImageHistory(prev => [...prev.slice(0, currentIndex + 1), newUri]);
-        setCurrentIndex(prev => prev + 1);
+        setCurrentImage(newUri);
+        setImageHistory(newHistory);
+        setCurrentIndex(newHistory.length - 1);
       }
     });
 
     return unsubscribe;
-  }, [navigation, route.params?.newImageUri, currentIndex]);
+  }, [navigation, route.params?.newImageUri]);
 
-  const handleUndo = () => {
-    setCurrentIndex((prevIndex) => {
-      const newIndex = Math.max(0, prevIndex - 1);
-      setCurrentImage(imageHistory[newIndex]);
-      return newIndex;
-    });
-  };
+
   useEffect(() => {
     const handleBackPress = () => {
       Alert.alert(
@@ -63,27 +60,44 @@ export default function EditPhoto({ route, navigation }) {
     };
   }, []);
 
-  const handleRedo = () => {
-    setCurrentIndex((prevIndex) => {
-      const newIndex = Math.min(imageHistory.length - 1, prevIndex + 1);
-      setCurrentImage(imageHistory[newIndex]);
-      return newIndex;
-    });
-  };
-
   const handleCrop = async () => {
     try {
       const croppedImage = await ImagePicker.openCropper({
         path: currentImage,
         compressImageQuality: 0.8,
       });
-      navigation.setParams({ newImageUri: croppedImage.path });
+      
+      // Update history directly here instead of relying on navigation params
+      const newHistory = [...imageHistory.slice(0, currentIndex + 1), croppedImage.path];
       setCurrentImage(croppedImage.path);
-      setImageHistory(prev => [...prev.slice(0, currentIndex + 1), croppedImage.path]);
-      setCurrentIndex(prev => prev + 1);
+      setImageHistory(newHistory);
+      setCurrentIndex(newHistory.length - 1);
+      
+      // Update navigation params to maintain consistency
+      navigation.setParams({ 
+        newImageUri: croppedImage.path,
+        imageHistory: newHistory,
+        currentIndex: newHistory.length - 1
+      });
     } catch (error) {
       console.error('Crop error:', error);
       Alert.alert('Error', 'Failed to crop image');
+    }
+  };
+
+  const handleUndo = () => {
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      setCurrentIndex(newIndex);
+      setCurrentImage(imageHistory[newIndex]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (currentIndex < imageHistory.length - 1) {
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+      setCurrentImage(imageHistory[newIndex]);
     }
   };
 
@@ -105,10 +119,15 @@ export default function EditPhoto({ route, navigation }) {
     }
   };
 
-   const uploadToImgBB = async () => {
+  const uploadToImgBB = async () => {
     setIsUploading(true);
+    setUploadProgress('Preparing image...');
     try {
+      // Read file and update progress
+      setUploadProgress('Converting image...');
       const imageBase64 = await RNFS.readFile(currentImage, 'base64');
+      
+      setUploadProgress('Uploading to server...');
       const response = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, {
         method: "POST",
         headers: {
@@ -120,17 +139,28 @@ export default function EditPhoto({ route, navigation }) {
       const data = await response.json();
 
       if (data.success) {
+        setUploadProgress('Saving to your account...');
         const imageUrl = data.data.url;
-        addPhotoToHistory(imageUrl);
-        Alert.alert("Upload Successful", "Image has been uploaded successfully.");
+        await addPhotoToHistory(imageUrl);
+        Alert.alert(
+          "Success", 
+          "Image has been uploaded and saved to your account.",
+          [{ 
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }]
+        );
       } else {
-        Alert.alert("Upload Failed", "Could not upload the image.");
+        throw new Error('Upload failed');
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to upload image.");
-    }finally {
+      Alert.alert(
+        "Upload Failed", 
+        "Could not upload the image. Please check your internet connection and try again."
+      );
+    } finally {
       setIsUploading(false);
-      navigation.goBack();
+      setUploadProgress('');
     }
   };
 
@@ -149,12 +179,22 @@ export default function EditPhoto({ route, navigation }) {
   }; 
 
   const handleSave = async () => {
-     if (!isLoggedIn) {
-      Alert.alert("Please login", "You must be logged in to save images.");
+    if (!isLoggedIn) {
+      Alert.alert(
+        "Login Required", 
+        "You must be logged in to save images. Would you like to log in now?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => navigation.navigate('Login') }
+        ]
+      );
       return;
     }
+
+    if (isSaving) return; 
+    setIsSaving(true);
     await uploadToImgBB();
-    setSaved(true); 
+    setIsSaving(false);
   };
 
   return (
