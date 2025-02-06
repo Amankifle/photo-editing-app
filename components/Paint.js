@@ -75,7 +75,6 @@ export default function Paint({ route, navigation }) {
         size: fileStats.size,
       };
   
-      // Navigate to EditPhoto with the new image path
       navigation.replace("EditPhoto", {
         newImageUri: imageMetadata.path,
         imageHistory: imageHistory,

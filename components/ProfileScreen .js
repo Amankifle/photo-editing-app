@@ -7,7 +7,6 @@ import { AuthContext } from './AuthContext';
 import auth from '@react-native-firebase/auth';
 import EditProfileModal from './EditProfileModal';
 
-// Separate component for info items
 const InfoItem = ({ iconName, text }) => (
   <View style={styles.infoItem}>
     <Icon name={iconName} size={20} color="#000" />
@@ -15,8 +14,7 @@ const InfoItem = ({ iconName, text }) => (
   </View>
 );
 
-// Constants
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY || "2b7569691217e68cdf957b6f66d634e1";
+const IMGBB_API_KEY =  "2b7569691217e68cdf957b6f66d634e1";
 const DEFAULT_PROFILE_IMAGE = require('../Resource/Images/profile-user.jpg');
 
 const ProfileScreen = ({ navigation }) => {
@@ -28,7 +26,7 @@ const ProfileScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
   const [userId, setUserId] = useState(auth().currentUser?.uid || null);
 
-  // Fetch user data
+
   const fetchUserData = useCallback(async (uid) => {
     if (!uid) return;
 
@@ -56,7 +54,7 @@ const ProfileScreen = ({ navigation }) => {
     }
   }, []);
 
-  // Listen for authentication state changes
+
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged((user) => {
       if (user) {
@@ -68,10 +66,10 @@ const ProfileScreen = ({ navigation }) => {
       }
     });
 
-    return () => unsubscribe(); // Cleanup on unmount
+    return () => unsubscribe();
   }, [fetchUserData]);
 
-  // Image handling functions
+
   const uploadToImgBB = useCallback(async () => {
     try {
       const result = await launchImageLibrary({ mediaType: 'photo', includeBase64: true });
@@ -107,7 +105,7 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  // Action handlers
+
   const handleDeleteProfileImage = useCallback(() => {
     Alert.alert(
       "Delete Profile Picture",

@@ -7,8 +7,14 @@ const EditProfileModal = ({ visible, onClose, userData, onUpdate }) => {
   const [name, setName] = useState(userData?.name || '');
   const [phone, setPhone] = useState(userData?.phone || '');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSave = async () => {
+    setError(''); 
+    if (phone.length !== 11) {
+      setError('Enter a proper phone number.');
+      return;
+    }
     setLoading(true);
     try {
       const userId = auth().currentUser?.uid;
@@ -46,6 +52,8 @@ const EditProfileModal = ({ visible, onClose, userData, onUpdate }) => {
             value={phone}
             onChangeText={setPhone}
           />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity onPress={onClose} style={[styles.button, styles.cancelButton]}>
@@ -106,6 +114,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
   },
 });
 

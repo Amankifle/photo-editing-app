@@ -16,7 +16,6 @@ export default function Home({navigation}) {
     const { SetEmail } = useContext(AuthContext);
     
     useEffect(() => {
-        // Configure Google Sign-In
         GoogleSignin.configure({
             webClientId: '689795346533-7nf37pqvli2cpmc65425b4dshq3pcrp1.apps.googleusercontent.com',  
         });

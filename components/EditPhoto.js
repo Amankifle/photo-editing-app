@@ -27,7 +27,7 @@ export default function EditPhoto({ route, navigation }) {
         const prevHistory = route.params.imageHistory || imageHistory;
         const prevIndex = route.params.currentIndex || currentIndex;
 
-        // Update the history by removing any "future" states after the current index
+        
         const newHistory = [...prevHistory.slice(0, prevIndex + 1), newUri];
         
         setCurrentImage(newUri);
@@ -67,13 +67,11 @@ export default function EditPhoto({ route, navigation }) {
         compressImageQuality: 0.8,
       });
       
-      // Update history directly here instead of relying on navigation params
       const newHistory = [...imageHistory.slice(0, currentIndex + 1), croppedImage.path];
       setCurrentImage(croppedImage.path);
       setImageHistory(newHistory);
       setCurrentIndex(newHistory.length - 1);
       
-      // Update navigation params to maintain consistency
       navigation.setParams({ 
         newImageUri: croppedImage.path,
         imageHistory: newHistory,
@@ -123,7 +121,7 @@ export default function EditPhoto({ route, navigation }) {
     setIsUploading(true);
     setUploadProgress('Preparing image...');
     try {
-      // Read file and update progress
+      
       setUploadProgress('Converting image...');
       const imageBase64 = await RNFS.readFile(currentImage, 'base64');
       

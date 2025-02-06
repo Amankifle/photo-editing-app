@@ -55,10 +55,8 @@ export default function ProjectList({ navigation }) {
 
   const handleDeleteProject = async (projectId) => {
     try {
-      // Delete from Firestore
       await firestore().collection("photoHistory").doc(projectId).delete();
       
-      // Update local state
       setHistory(history.filter(item => item.id !== projectId));
     } catch (error) {
       console.error("Error deleting project:", error);

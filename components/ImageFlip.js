@@ -67,7 +67,6 @@ export default function ImageFlip({ route, navigation }) {
     );
   }
 
-  // Calculate dimensions to maintain aspect ratio
   const imageAspectRatio = image.width() / image.height();
   const containerAspectRatio = SCREEN_WIDTH / (SCREEN_HEIGHT * 0.7);
   
@@ -75,14 +74,11 @@ export default function ImageFlip({ route, navigation }) {
   let imageHeight = SCREEN_HEIGHT * 0.7;
   
   if (imageAspectRatio > containerAspectRatio) {
-    // Image is wider than container
     imageHeight = SCREEN_WIDTH / imageAspectRatio;
   } else {
-    // Image is taller than container
     imageWidth = (SCREEN_HEIGHT * 0.7) * imageAspectRatio;
   }
 
-  // Calculate center position
   const centerX = (SCREEN_WIDTH - imageWidth) / 2;
   const centerY = ((SCREEN_HEIGHT * 0.7) - imageHeight) / 2;
 

@@ -100,22 +100,19 @@ export default function SignUpWithEmail({setModalVisible, navigation}) {
             const userCredential = await auth().createUserWithEmailAndPassword(email, password);
             const user = userCredential.user;
     
-            // Ensure auth().currentUser is updated
             auth().currentUser?.updateProfile({
                 displayName: name,
             });
     
-            // Send email verification
             auth().currentUser?.sendEmailVerification();
     
-            // Save user info in Firestore
             firestore()
                 .collection('users')
                 .doc(user.uid)
                 .set({
                     name: name,
                     email: email,
-                    createdAt: firestore.Timestamp.now(), // Corrected
+                    createdAt: firestore.Timestamp.now(),
                     phone: '',
                     uid: user.uid,
                 });
