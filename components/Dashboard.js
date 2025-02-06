@@ -15,6 +15,7 @@ export default function Dashboard({ navigation }) {
   const { isLoggedIn } = useContext(AuthContext);
   const { logout } = useContext(AuthContext);
   const [imageUri, setImageUri] = useState(null);
+  const [list, setList] = useState(false);
 
   const pickImage = () => {
     const options = {
@@ -58,7 +59,7 @@ export default function Dashboard({ navigation }) {
       console.log('Error: ', response.errorMessage);
     } else if (response.assets && response.assets.length > 0) {
       const image = response.assets[0];
-      navigation.navigate('EditPhoto', { imageUri: image.uri });
+      navigation.navigate('EditPhoto', { imageUri: image.uri, imageId: 0 });
     }
   };
 
@@ -120,12 +121,14 @@ export default function Dashboard({ navigation }) {
 
       <View style={styles.projectsHeader}>
         <Text style={styles.projectsTitle}>Projects</Text>
-        <TouchableOpacity>
-          <Ionicons name="menu" size={24} color="black" />
+        <TouchableOpacity  onPress={()=>setList(!list)} >
+        {list ? (
+  <Ionicons name="list-outline" size={24} color="black" />)
+  :(<Ionicons name="grid-outline" size={24} color="black" />)}
         </TouchableOpacity>
       </View>
       {isLoggedIn?
-      <ProjectList navigation={navigation}/>:
+      <ProjectList navigation={navigation} list={list}/>:
             <View style={styles.emptyState}>
         <Text style={styles.emptyStateSubtext}>Login to see history!</Text>
       </View>}

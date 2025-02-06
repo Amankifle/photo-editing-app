@@ -25,6 +25,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Paint({ route, navigation }) {
   const { imageUri, imageHistory, currentIndex } = route.params;
+  const { ImageId: ImageId } = route.params;
   const image = useImage(imageUri);
   const viewShotRef = useRef();
   const canvasRef = useCanvasRef();
@@ -34,6 +35,7 @@ export default function Paint({ route, navigation }) {
   const [textPosition, setTextPosition] = useState({ x: 50, y: 100 });
   const textPositionRef = useRef(textPosition);
   const font = useFont(require("../assets/fonts/OpenSans-Regular.ttf"), textSize);
+
 
   const panResponder = useRef(
     PanResponder.create({
@@ -78,7 +80,8 @@ export default function Paint({ route, navigation }) {
       navigation.replace("EditPhoto", {
         newImageUri: imageMetadata.path,
         imageHistory: imageHistory,
-        currentIndex: currentIndex,
+        currentIndex: currentIndex, 
+        ImageId: ImageId
       });
   
     } catch (error) {

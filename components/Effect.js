@@ -7,12 +7,14 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Effect({ route, navigation }) {
   const { imageUri } = route.params;
+  const { ImageId: ImageId } = route.params;
   const { imageHistory } = route.params;
   const { currentIndex } = route.params;
   const image = useImage(imageUri);
   const [selectedEffect, setSelectedEffect] = useState("Default");
   const canvasRef = useCanvasRef();
 
+  console.log(ImageId)
 
   const defaultMatrix = () => [
     1, 0, 0, 0, 0,
@@ -106,7 +108,7 @@ export default function Effect({ route, navigation }) {
         size: fileStats.size
       };
   
-      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path,imageHistory: imageHistory,currentIndex: currentIndex});
+      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path,imageHistory: imageHistory,currentIndex: currentIndex, ImageId: ImageId});
     } catch (error) {
       Alert.alert("Error", `Failed to save image: ${error.message}`);
       console.error("Save error:", error);

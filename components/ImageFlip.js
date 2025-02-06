@@ -8,6 +8,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function ImageFlip({ route, navigation }) {
   const { imageUri } = route.params;
+  const { ImageId: ImageId } = route.params;
   const { imageHistory } = route.params;
   const { currentIndex } = route.params;
   
@@ -50,7 +51,7 @@ export default function ImageFlip({ route, navigation }) {
       navigation.replace('EditPhoto', { 
         newImageUri: imageMetadata.path, 
         imageHistory: imageHistory, 
-        currentIndex: currentIndex
+        currentIndex: currentIndex, ImageId: ImageId
       });
   
     } catch (error) {

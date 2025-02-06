@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useState } from 'react';
 import firestore from '@react-native-firebase/firestore';
@@ -6,7 +6,7 @@ import auth from '@react-native-firebase/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-export default function ProjectList({ navigation }) {
+export default function ProjectList({ navigation, list }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,14 +49,13 @@ export default function ProjectList({ navigation }) {
     }, [])
   );
 
-  const handleProjectPress = (imageUri) => {
-    navigation.navigate('EditPhoto', { imageUri });
+  const handleProjectPress = (imageUri, imageId) => {
+    navigation.navigate('EditPhoto', { imageUri: imageUri, imageId: imageId });
   };
 
   const handleDeleteProject = async (projectId) => {
     try {
       await firestore().collection("photoHistory").doc(projectId).delete();
-      
       setHistory(history.filter(item => item.id !== projectId));
     } catch (error) {
       console.error("Error deleting project:", error);
@@ -69,15 +68,8 @@ export default function ProjectList({ navigation }) {
       "Delete Project",
       "Are you sure you want to delete this project?",
       [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: () => handleDeleteProject(projectId)
-        }
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => handleDeleteProject(projectId) }
       ]
     );
   };
@@ -89,30 +81,38 @@ export default function ProjectList({ navigation }) {
           <ActivityIndicator size="large" color="#007AFF" />
         </View>
       ) : history.length > 0 ? (
-        <View style={styles.projectContainer}>
-          {history.map((item) => (
-            <View 
-              key={item.id} 
-              style={styles.projectItem}
-            >
-              <TouchableOpacity 
-                style={styles.projectContent}
-                onPress={() => handleProjectPress(item.imageUrl)}
-              >
-                <Image source={{ uri: item.imageUrl }} style={styles.image} />
-                <View style={styles.projectItemInfo}>
-                  <Text style={styles.projectName}>ID: {item.id.slice(-4)}</Text>
-                  <Text style={styles.projectDate}>
-                    {item.timestamp ? item.timestamp.toLocaleDateString() : 'No Date'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => showDeleteConfirmation(item.id)}>
-                <Ionicons name="trash" size={24} color="gray" />
-              </TouchableOpacity>
+        <ScrollView contentContainerStyle={list ? styles.projectContainerList : styles.projectContainer}>
+          {list ? (
+            <View style={styles.gridContainer}>
+              {history.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.gridItem}
+                  onPress={() => handleProjectPress(item.imageUrl,item.id)}
+                >
+                  <Image source={{ uri: item.imageUrl }} style={styles.imageList} />
+                </TouchableOpacity>
+              ))}
             </View>
-          ))}
-        </View>
+          ) : (
+            history.map((item) => (
+              <View key={item.id} style={styles.projectItem}>
+                <TouchableOpacity style={styles.projectContent} onPress={() => handleProjectPress(item.imageUrl,item.id)}>
+                  <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                  <View style={styles.projectItemInfo}>
+                    <Text style={styles.projectName}>ID: {item.id.slice(-4)}</Text>
+                    <Text style={styles.projectDate}>
+                      {item.timestamp ? item.timestamp.toLocaleDateString() : 'No Date'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => showDeleteConfirmation(item.id)}>
+                  <Ionicons name="trash" size={24} color="gray" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </ScrollView>
       ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateIcon}>
@@ -144,23 +144,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 100,
   },
-  emptyStateIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
-  },
-  emptyStateSubtext: {
-    fontSize: 16,
-    color: '#666',
-  },
   projectContainer: {
-    flex: 1,
+    flexGrow: 1,
     marginTop: 20,
+  },
+  projectContainerList: {
+    marginTop: 20,
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingBottom: 20,
+  },
+  gridItem: {
+    width: '30%',
+    aspectRatio: 1,
+    marginBottom: 10,
+  },
+  imageList: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    borderColor: 'grey',
+    borderWidth: 1
   },
   projectItem: {
     flexDirection: 'row',
@@ -178,13 +185,13 @@ const styles = StyleSheet.create({
   image: {
     width: 50,
     height: 50,
-    borderColor: 'grey',
-    borderWidth: 1,
     borderRadius: 8,
+    borderColor: 'grey',
+    borderWidth: 1
   },
   projectItemInfo: {
     marginLeft: 20,
-    flex: 1
+    flex: 1,
   },
   projectName: {
     fontSize: 16,
@@ -193,5 +200,5 @@ const styles = StyleSheet.create({
   projectDate: {
     fontSize: 14,
     color: '#666',
-  },  
+  },
 });

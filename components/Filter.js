@@ -9,6 +9,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function Filter({ route, navigation }) {
   const { imageUri } = route.params;
+  const { ImageId: ImageId } = route.params;
   const { imageHistory } = route.params;
   const { currentIndex } = route.params;
   const image = useImage(imageUri);
@@ -18,6 +19,8 @@ export default function Filter({ route, navigation }) {
   const [blur, setBlur] = useState(0);
   const canvasRef = useCanvasRef();
   const [selectedFilter, setSelectedFilter] = useState("Brightness");
+
+  console.log(ImageId)
 
   const brightnessMatrix = (value) => [
     value, 0, 0, 0, 0,
@@ -79,7 +82,7 @@ export default function Filter({ route, navigation }) {
         size: fileStats.size
       };
   
-      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path, imageHistory: imageHistory, currentIndex: currentIndex});
+      navigation.replace('EditPhoto', { newImageUri: imageMetadata.path, imageHistory: imageHistory, currentIndex: currentIndex, ImageId: ImageId});
   
     } catch (error) {
       Alert.alert("Error", `Failed to save image: ${error.message}`);

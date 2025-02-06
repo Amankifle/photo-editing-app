@@ -10,8 +10,9 @@ import auth from '@react-native-firebase/auth';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const API_KEY = "2b7569691217e68cdf957b6f66d634e1";
 
-export default function EditPhoto({ route, navigation }) {
+export default function EditPhoto({ route, navigation}) {
   const { imageUri: initialImageUri } = route.params;
+  const { imageId: IMAGE_ID } = route.params;
   const [currentImage, setCurrentImage] = useState(initialImageUri);
   const [imageHistory, setImageHistory] = useState([initialImageUri]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,6 +20,7 @@ export default function EditPhoto({ route, navigation }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [id, setId] = useState(IMAGE_ID);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -26,10 +28,11 @@ export default function EditPhoto({ route, navigation }) {
         const newUri = route.params.newImageUri;
         const prevHistory = route.params.imageHistory || imageHistory;
         const prevIndex = route.params.currentIndex || currentIndex;
-
+        const id = route.params.ImageId;
         
         const newHistory = [...prevHistory.slice(0, prevIndex + 1), newUri];
         
+        setId(id)
         setCurrentImage(newUri);
         setImageHistory(newHistory);
         setCurrentIndex(newHistory.length - 1);
@@ -38,7 +41,6 @@ export default function EditPhoto({ route, navigation }) {
 
     return unsubscribe;
   }, [navigation, route.params?.newImageUri]);
-
 
   useEffect(() => {
     const handleBackPress = () => {
@@ -142,7 +144,7 @@ export default function EditPhoto({ route, navigation }) {
         await addPhotoToHistory(imageUrl);
         Alert.alert(
           "Success", 
-          "Image has been uploaded and saved to your account.",
+          "Image has been saved.",
           [{ 
             text: 'OK',
             onPress: () => navigation.goBack()
@@ -164,13 +166,21 @@ export default function EditPhoto({ route, navigation }) {
 
   const addPhotoToHistory = async (imageUrl) => {
     if (!auth().currentUser) return;
+    
     try {
-      const timestamp = new Date();
-      firestore().collection("photoHistory").add({
-        userId: auth().currentUser.uid,
-        imageUrl,
-        timestamp: timestamp
-      });
+      if (id == 0){
+        const timestamp = new Date();
+        firestore().collection("photoHistory").add({
+          userId: auth().currentUser.uid,
+          imageUrl,
+          timestamp: timestamp
+        });
+      }else{
+        await firestore().collection("photoHistory").doc(id).update({
+          imageUrl,
+          timestamp: new Date()
+        });
+      }
     } catch (error) {
       console.error("Error saving to Firestore:", error);
     }
@@ -254,7 +264,7 @@ export default function EditPhoto({ route, navigation }) {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.toolItem} onPress={() => navigation.replace('ImageFlip', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex})}>
+        <TouchableOpacity style={styles.toolItem} onPress={() => navigation.replace('ImageFlip', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex, ImageId: IMAGE_ID})}>
           <View style={styles.toolIcon}>
             <Ionicons name="swap-horizontal" size={24} color="#fff" />
           </View>
@@ -262,21 +272,21 @@ export default function EditPhoto({ route, navigation }) {
 
         <TouchableOpacity
           style={styles.toolItem}
-          onPress={() => navigation.replace('Filter', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex})}
+          onPress={() => navigation.replace('Filter', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex, ImageId: IMAGE_ID})}
         >
           <Ionicons name="sunny" size={24} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.toolItem}
-          onPress={() => navigation.replace('Effect', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex })}
+          onPress={() => navigation.replace('Effect', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex, ImageId: IMAGE_ID })}
         >
           <Ionicons name={"filter"} size={24} color="white" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.toolItem}
-          onPress={() => navigation.replace('Paint', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex })}
+          onPress={() => navigation.replace('Paint', { imageUri: currentImage,imageHistory: imageHistory,currentIndex: currentIndex, ImageId: IMAGE_ID })}
         >
           <Ionicons name={"color-palette"} size={24} color="white" />
         </TouchableOpacity>
